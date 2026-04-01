@@ -1,18 +1,15 @@
 const express = require("express");
 
 const app = express();
+const questionsRouter = require("./routes/questions");
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use("/api/questions", questionsRouter);
 
-app.get("/", (req, res) => {
-    res.json({ message: "Hello, World!" });
+app.use((req, res) => {
+    res.status(404).json({msg: "Not Found"})
 });
-
-app.get("/health", (req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
-
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });

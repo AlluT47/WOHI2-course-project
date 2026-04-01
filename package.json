@@ -7,7 +7,12 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js"
   },
-  "keywords": ["express", "node.js", "backend", "api"],
+  "keywords": [
+    "express",
+    "node.js",
+    "backend",
+    "api"
+  ],
   "author": "Aleksi Taiponen",
   "license": "MIT",
   "dependencies": {
