@@ -5,7 +5,14 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "db:migrate": "npx prisma migrate dev",
+    "db:seed": "npx prisma db seed",
+    "db:studio": "npx prisma studio",
+    "db:reset": "npx prisma migrate reset"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   },
   "keywords": [
     "express",
@@ -16,6 +23,10 @@
   "author": "Aleksi Taiponen",
   "license": "MIT",
   "dependencies": {
+    "@prisma/client": "6.x.x",
     "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "prisma": "^6.x.x"
   }
 }
