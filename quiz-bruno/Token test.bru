@@ -1,0 +1,16 @@
+meta {
+  name: New HTTP Request
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseURL}}
+  body: multipartForm
+  auth: none
+}
+
+body:multipart-form {
+  email: admin@example.com
+  password: 1234
+}
