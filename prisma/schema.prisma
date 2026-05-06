@@ -9,33 +9,46 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id  Int @id @default(autoincrement())
-  email String  @unique @db.VarChar(255)
-  password  String  @db.VarChar(255)
-  name  String  @db.VarChar(100)
-  quizes  Quiz[]
+  id       Int       @id @default(autoincrement())
+  email    String    @unique @db.VarChar(255)
+  password String    @db.VarChar(255)
+  name     String    @db.VarChar(100)
+  quizes   Quiz[]
+  solved Solved[]
 }
 
-
 model Quiz {
-  id  Int  @id @default(autoincrement())
-  question  String  @db.Text
-  answer  String  @db.Text
-  keywords  Keyword[]
-  userId  Int
-  user  User @relation(fields: [userId], references: [id])
+  id       Int       @id @default(autoincrement())
+  question String    @db.Text
+  answer   String    @db.Text
+  keywords Keyword[]
+  userId   Int
+  user     User      @relation(fields: [userId], references: [id])
+  solved Solved[]
+  imageUrl String?    @db.VarChar(255)
 
   @@map("quizes")
 }
 
 model Keyword {
-  id Int @id @default(autoincrement())
-  name  String  @unique @db.VarChar(100)
+  id     Int    @id @default(autoincrement())
+  name   String @unique @db.VarChar(100)
   quizes Quiz[]
 
   @@map("keywords")
+}
+
+model Solved {
+  id         Int  @id @default(autoincrement())
+  userId     Int
+  user       User @relation(fields: [userId], references: [id])
+  questionId Int
+  question   Quiz @relation(fields: [questionId], references: [id])
+
+  @@unique([userId, questionId])
+  @@map("solved")
 }
