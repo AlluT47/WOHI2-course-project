@@ -1,33 +1,24 @@
-const express = require("express");
-const app = express();
-const questionsRouter = require("./routes/questions");
+const app = require("./app");
 const prisma = require("./lib/prisma");
-const authRouter = require("./routes/auth");
-const path = require("path");
+const logger = require("./lib/logger");
+
 const PORT = process.env.PORT || 3000;
 
-
-app.use(express.static(path.join(__dirname, '..', 'public')));
-
-
-app.use(express.json());
-app.use("/api/auth", authRouter);
-app.use("/api/questions", questionsRouter);
-
-
-app.use((req, res) => {
-    res.status(404).json({msg: "Not Found"})
+const server = app.listen(PORT, () => {
+  logger.info({ port: PORT },  "server listening");
 });
 
 
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: "Internal server error" });
-});
+async function shutdown() {
+  await prisma.$disconnect();
+  server.close(() => process.exit(0));
+}
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
 
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+    logger.info({port: PORT}, `Server is running on http://localhost:${PORT}`);
 });
 
 

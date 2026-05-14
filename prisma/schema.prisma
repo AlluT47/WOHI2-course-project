@@ -19,6 +19,8 @@ model User {
   name     String    @db.VarChar(100)
   quizes   Quiz[]
   solved Solved[]
+
+  @@map("user")
 }
 
 model Quiz {

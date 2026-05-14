@@ -3,22 +3,32 @@ const router = express.Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const prisma = require("../lib/prisma");
+const { z } = require("zod");
+const { ValidationError, ConflictError, UnauthorizedError } = require("../lib/error");
 
 const SECRET = process.env.JWT_SECRET;
 
 
+const RegisterInput = z.object({
+  email: z.string().min(1).max(255),
+  password: z.string().min(1).max(72),
+  name: z.string().min(1).max(100), 
+});
+
+
+const LoginInput = z.object({
+  email: z.string().min(1),
+  password: z.string().min(1),
+})
+
+
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
-    const { email, password, name } = req.body;
-
-    if (!email || !password || !name) {
-        return res.status(400).json({ error: "email, password and name are required" });
-    }
+    const { email, password, name } = RegisterInput.parse(req.body);
 
     const existingUser = await prisma.user.findUnique({ where: { email },});
-
     if (existingUser) {
-        return res.status(409).json({ error: "Email already registered" });
+        throw new ConflictError("Email already registered");
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -27,7 +37,7 @@ router.post("/register", async (req, res) => {
         data: { email, password: hashedPassword, name },
     });
 
-    const token = jwt.sign({ userId: user.id }, SECRET, { expiresIn: "1h" });
+    const token = jwt.sign({ userId: user.id }, SECRET, { expiresIn: "1h", algorithm: "HS256", });
 
     res.status(201).json({
         message: "User registered succefully",
@@ -38,27 +48,19 @@ router.post("/register", async (req, res) => {
 
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password } = LoginInput.parse(req.body);
 
-  if (!email || !password) {
-    return res.status(400).json({ error: "email and password are required" });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email },
-  });
-
+  const user = await prisma.user.findUnique({ where: { email }, });
   if (!user) {
-    return res.status(401).json({ error: "Invalid credentials" });
+    throw new UnauthorizedError("Invalid credentials");
   }
 
   const isValid = await bcrypt.compare(password, user.password);
-
   if (!isValid) {
-    return res.status(401).json({ error: "Invalid credentials" });
+    throw new UnauthorizedError("Invalid credentials");
   }
 
-  const token = jwt.sign({ userId: user.id }, SECRET, { expiresIn: "1h" });
+  const token = jwt.sign({ userId: user.id }, SECRET, { expiresIn: "1h", algorithm: "HS256", });
 
   res.json({ token });
 });
