@@ -24,22 +24,22 @@ const LoginInput = z.object({
 
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
-    const { email, password, name } = RegisterInput.parse(req.body);
+  const { email, password, name } = RegisterInput.parse(req.body);
 
-    const existingUser = await prisma.user.findUnique({ where: { email },});
+  const existingUser = await prisma.user.findUnique({ where: { email },});
     if (existingUser) {
         throw new ConflictError("Email already registered");
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
+  const user = await prisma.user.create({
         data: { email, password: hashedPassword, name },
     });
 
-    const token = jwt.sign({ userId: user.id }, SECRET, { expiresIn: "1h", algorithm: "HS256", });
+  const token = jwt.sign({ userId: user.id }, SECRET, { expiresIn: "1h", algorithm: "HS256", });
 
-    res.status(201).json({
+  res.status(201).json({
         message: "User registered succefully",
         token,
     });
@@ -48,7 +48,7 @@ router.post("/register", async (req, res) => {
 
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
-    const { email, password } = LoginInput.parse(req.body);
+  const { email, password } = LoginInput.parse(req.body);
 
   const user = await prisma.user.findUnique({ where: { email }, });
   if (!user) {

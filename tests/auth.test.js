@@ -1,7 +1,6 @@
 const bcrypt = require("bcrypt");
 const { request, app, prisma, resetDb, registerAndLogin } = require("./helpers");
 
-
 beforeEach(resetDb);
 
 describe("POST /api/auth/register", () => {
@@ -15,5 +14,5 @@ describe("POST /api/auth/register", () => {
         const user = await prisma.user.findUnique({ where: { email: "a@test.io" } });
         expect(user.password).not.toBe("pw12345");
         expect(await bcrypt.compare("pw12345", user.password)).toBe(true);
-    });
+    });    
 });
