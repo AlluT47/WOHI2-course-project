@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: cms
+      MYSQL_DATABASE: quiz
       MYSQL_USER: wohii
       MYSQL_PASSWORD: yourpassword
     ports:
