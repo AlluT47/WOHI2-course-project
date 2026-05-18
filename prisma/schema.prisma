@@ -20,7 +20,7 @@ model User {
   quizes   Quiz[]
   solved Solved[]
 
-  @@map("user")
+  @@map("User")
 }
 
 model Quiz {
