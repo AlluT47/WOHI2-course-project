@@ -6,13 +6,15 @@ const isOwner = require("../middleware/isOwner");
 const path = require("path");
 const multer = require("multer");
 const { NotFoundError, ValidationError } = require("../lib/error");
-const { z } = require("zod");
+const { z, promise } = require("zod");
 const { title } = require("process");
+const { count } = require("console");
 
 
 const QuestionInput = z.object({
     question: z.string().min(1),
     answer: z.string().min(1),
+    multipleChoice: z.array(z.string()).min(2),
     keywords: z.union([z.string(), z.array(z.string())]).optional(),
 });
 
@@ -48,6 +50,7 @@ function parseKeywords(keywords) {
 function formatQuestion(quiz) {
   return {
     ...quiz,
+    multipleChoice: quiz.multipleChoice || [],
     keywords: quiz.keywords.map((k) => k.name),
     userName: quiz.user ? quiz.user.name : null,
     imageUrl: quiz.imageUrl,
@@ -100,6 +103,42 @@ router.get("/", async (req, res) => {
 });
 
 
+// Get /api/questions/leaderboard
+router.get("/leaderboard", async (req, res) => {
+    const leaderboard = await prisma.solved.groupBy({
+        by: ["userId"],
+        _count: {
+            id: true
+        },
+        orderBy: {
+            _count: {
+                id: "desc"
+            }
+        },
+        take: 10
+    });
+
+    const users = await Promise.all(
+        leaderboard.map(async (ranking) => {
+            const user = await prisma.user.findUnique({
+                where: { id: ranking.userId },
+                select: { id: true, name: true }
+            });
+
+            if (!user) return null;
+
+            return {
+                userId: user.id,
+                userName: user.name,
+                solvedCount: ranking._count.id
+            };
+        })
+    );
+
+    res.json(users.filter(Boolean));
+});
+
+
 // GET /api/questions/:questionId
 router.get("/:questionId", async (req, res) => {
     const questionId = Number(req.params.questionId);
@@ -127,8 +166,13 @@ router.get("/:questionId", async (req, res) => {
 
 // POST /api/questions
 router.post("/", uploads.single("image"), async (req, res) => {
-    const { question, answer, keywords } = QuestionInput.parse(req.body);
-    
+    //console.log("BODY:", req.body);
+    //console.log("FILE:", req.file);
+
+    const parsedbody = {...req.body, multipleChoice: JSON.parse(req.body.multipleChoice)};
+
+    const { question, answer, multipleChoice, keywords } = QuestionInput.parse(parsedbody);
+
     const keywordsArray = parseKeywords(keywords);
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
@@ -136,6 +180,7 @@ router.post("/", uploads.single("image"), async (req, res) => {
         data: {
             question,
             answer,
+            multipleChoice,
             imageUrl,
             userId: req.user.userId,
             keywords: {
@@ -154,13 +199,16 @@ router.post("/", uploads.single("image"), async (req, res) => {
 // PUT /api/questions/:questionId
 router.put("/:questionId", isOwner, uploads.single("image"), async (req, res) => {
     const questionId = Number(req.params.questionId);
-    const { question, answer, keywords } = QuestionInput.parse(req.body);
+    const parsedbody = {...req.body, multipleChoice: JSON.parse(req.body.multipleChoice)};
+
+    const { question, answer, multipleChoice, keywords } = QuestionInput.parse(parsedbody);
 
     const keywordsArray = parseKeywords(keywords);
 
     const data = {
         question,
         answer,
+        multipleChoice,
         keywords: {
             set: [],
             connectOrCreate: keywordsArray.map((kw) => ({
@@ -187,14 +235,14 @@ router.post("/:questionId/play", async (req, res) => {
         throw new NotFoundError("Question not found");
     }
 
-    const { answer } = req.body;
+    const { selectedChoice } = req.body;
 
     const question = await prisma.quiz.findUnique({ where: { id: questionId } });
     if (!question) {
         throw new NotFoundError("Question not found");
     }
 
-    const isCorrect = question.answer.trim().toLowerCase() === (answer || "").trim().toLowerCase();
+    const isCorrect = question.answer.trim().toLowerCase() === (selectedChoice || "").trim().toLowerCase();
 
     let solved = null;
 

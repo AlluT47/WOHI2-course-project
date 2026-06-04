@@ -140,6 +140,7 @@ async function loadQuestions(keyword = "", page = 1) {
       </div>
       <div class="toolbar">
         <button class="btn btn-primary" id="new-question-btn">+ New Question</button>
+        <button class="btn btn-primary" id="leaderboard-btn">Leaderboard</button>
         <div class="search-bar">
           <input type="text" id="keyword-input" placeholder="Search by keyword..." value="${keyword}" />
           <button class="btn btn-search" id="search-btn">Search</button>
@@ -191,9 +192,13 @@ async function loadQuestions(keyword = "", page = 1) {
         </div>`;
     }
 
+    console.log();
+
     container.innerHTML = html;
 
     document.getElementById("new-question-btn").addEventListener("click", () => showQuestionForm());
+
+    document.getElementById("leaderboard-btn").addEventListener("click", () => loadLeaderboard());
 
     document.getElementById("search-btn").addEventListener("click", () => {
       loadQuestions(document.getElementById("keyword-input").value.trim(), 1);
@@ -224,6 +229,10 @@ async function loadQuestions(keyword = "", page = 1) {
     });
 
     container.querySelectorAll(".btn-delete").forEach((el) => {
+      el.addEventListener("click", () => loadLeaderboard(el.dataset.id));
+    });
+
+    container.querySelectorAll(".btn-delete").forEach((el) => {
       el.addEventListener("click", () => deleteQuestion(el.dataset.id));
     });
 
@@ -236,6 +245,52 @@ async function loadQuestions(keyword = "", page = 1) {
       showAuth();
       return;
     }
+    container.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+}
+
+async function loadLeaderboard() {
+  const container = document.getElementById("questions-container");
+  container.innerHTML = '<p class="loading">Loading leaderboard...</p>';
+
+  try {
+    const leaderboard = await apiFetch(CONFIG.ROUTES.LEADERBOARD);
+
+    const html = `
+          <table class="table table-striped">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Username</th>
+            <th scope="col">Numbe Of Solved</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${leaderboard.map((user, index) => {
+            return `
+              <tr>
+                <th scope="row">${index + 1}</th>
+                <td>${user.userName}</td>
+                <td>${user.solvedCount}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    `;
+
+    container.innerHTML = `
+      <a href="#" id="back-btn" class="back-link">&larr; Back to questions</a>
+      <h2>Leaderboard</h2>
+      ${html}
+    `;
+
+    document.getElementById("back-btn").addEventListener("click", (e) => {
+      e.preventDefault();
+      loadQuestions();
+    });
+    
+  } catch (err) {
     container.innerHTML = `<p class="error">${err.message}</p>`;
   }
 }
@@ -290,10 +345,12 @@ async function showQuestionForm(qId) {
   const container = document.getElementById("questions-container");
   const isEdit = !!qId;
   let q = { question: "", answer: "", keywords: [] };
+  let multipleChoice = q.multipleChoice || ["", "", "", ""];
 
   if (isEdit) {
     try {
       q = await apiFetch(`${CONFIG.ROUTES.QUESTIONS}/${qId}`);
+      multipleChoice = q.multipleChoice || ["", "", "", ""];
     } catch (err) {
       container.innerHTML = `<p class="error">${err.message}</p>`;
       return;
@@ -312,6 +369,12 @@ async function showQuestionForm(qId) {
         <div class="form-group">
           <label for="q-answer">Answer</label>
           <textarea id="q-answer" rows="4" required>${q.answer}</textarea>
+        </div>
+        <div class="form-group">
+          <label>Multiple Choice Options</label>
+          ${multipleChoice
+            .map((option, index) => `<input type="text" id="option-${index}" value="${option}" placeholder="Option ${index + 1}" required />`)
+            .join("")}
         </div>
         <div class="form-group">
           <label for="q-keywords">Keywords (comma-separated)</label>
@@ -337,9 +400,15 @@ async function showQuestionForm(qId) {
     const errorEl = document.getElementById("question-form-error");
     errorEl.textContent = "";
 
+    const multipleChoice = [];
+    for (let i = 0; i < 4; i++) {
+      multipleChoice.push(document.getElementById(`option-${i}`).value);
+    }
+
     const body = new FormData();
     body.append("question", document.getElementById("q-question").value);
     body.append("answer", document.getElementById("q-answer").value);
+    body.append("multipleChoice", JSON.stringify(multipleChoice));
     body.append("keywords", document.getElementById("q-keywords").value);
     const imageFile = document.getElementById("q-image").files[0];
     if (imageFile) body.append("image", imageFile);
@@ -377,11 +446,25 @@ async function playQuestion(qId) {
         }
         <form id="play-form" style="text-align:left">
           <div class="form-group">
-            <label for="play-answer">Your answer</label>
-            <textarea id="play-answer" rows="3" required></textarea>
+            <label>Select your answer</label>
+            <div id="mcq-options">
+              ${q.multipleChoice
+                .map(
+                  (opt) => `
+                  <label style="display:block;margin:0.5rem 0">
+                    <input type="radio" name="play-answer" value="${opt}" required />
+                    ${opt}
+                  </label>
+                `
+                )
+                .join("")}
+            </div>
           </div>
+
           <div style="text-align:center">
-            <button type="submit" class="btn btn-play" style="padding:0.7rem 2.5rem;font-size:1rem">Submit</button>
+            <button type="submit" class="btn btn-play" style="padding:0.7rem 2.5rem;font-size:1rem">
+              Submit
+            </button>
           </div>
         </form>
         <div id="play-result"></div>
@@ -400,12 +483,13 @@ async function playQuestion(qId) {
       errorEl.textContent = "";
       resultEl.innerHTML = "";
 
-      const answer = document.getElementById("play-answer").value;
+      const selected = document.querySelector('input[name="play-answer"]:checked');
+      const answer = selected ? selected.value : null;
 
       try {
         const result = await apiFetch(`${CONFIG.ROUTES.QUESTIONS}/${qId}/play`, {
           method: "POST",
-          body: JSON.stringify({ answer }),
+          body: JSON.stringify({ selectedChoice: answer }),
         });
 
         if (result.correct) {

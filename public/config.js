@@ -4,6 +4,7 @@ const CONFIG = {
     LOGIN: "/api/auth/login",
     REGISTER: "/api/auth/register",
     QUESTIONS: "/api/questions",
+    LEADERBOARD: "/api/questions/leaderboard",
   },
   FIELDS: {
     LOGIN: ["email", "password"],

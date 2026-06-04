@@ -27,6 +27,7 @@ model Quiz {
   id       Int       @id @default(autoincrement())
   question String    @db.Text
   answer   String    @db.Text
+  multipleChoice Json
   keywords Keyword[]
   userId   Int
   user     User      @relation(fields: [userId], references: [id])
