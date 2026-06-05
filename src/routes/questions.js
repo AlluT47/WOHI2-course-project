@@ -51,7 +51,7 @@ function formatQuestion(quiz) {
   return {
     ...quiz,
     multipleChoice: quiz.multipleChoice || [],
-    keywords: quiz.keywords.map((k) => k.name),
+    keywords: quiz.keywords.map((k) => k.name) ?? [],
     userName: quiz.user ? quiz.user.name : null,
     imageUrl: quiz.imageUrl,
     solvedCount: quiz._count?.solved ?? 0,
